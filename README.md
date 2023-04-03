@@ -2,7 +2,14 @@
 ![Backend](https://img.shields.io/badge/Backend-SpringBoot%20-orange.svg)
 ![License](https://img.shields.io/badge/license-Apache_2.0-red.svg)
 
-# Web-Based Drawing Program
+
+                             ██████╗  █████╗ ██╗███╗   ██╗████████╗
+                             ██╔══██╗██╔══██╗██║████╗  ██║╚══██╔══╝
+                             ██████╔╝███████║██║██╔██╗ ██║   ██║   
+                             ██╔═══╝ ██╔══██║██║██║╚██╗██║   ██║   
+                             ██║     ██║  ██║██║██║ ╚████║   ██║   
+                             ╚═╝     ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   
+                                           
 
 ## Features
   * User can draw multiple shapes with different colours.
