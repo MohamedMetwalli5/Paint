@@ -1,13 +1,16 @@
-package com.painter.backendpaint;
+package shapes;
 
 import java.util.ArrayList;
 import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.painter.backendpaint.IShape;
+import com.painter.backendpaint.OnePointShape;
+
+
 @SuppressWarnings({"unchecked"})
 @JsonTypeName("Square")
 public class Square extends OnePointShape{
-    Square(){
+    public Square(){
         setType("square");
     }
     Number side;    

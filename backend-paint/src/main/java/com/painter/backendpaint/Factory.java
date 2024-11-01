@@ -1,5 +1,12 @@
 package com.painter.backendpaint;
 
+import shapes.Circle;
+import shapes.Ellipse;
+import shapes.Line;
+import shapes.Rectangle;
+import shapes.Square;
+import shapes.Triangle;
+
 public class Factory {
     public IShape getShape(String type){
         if(type==null){

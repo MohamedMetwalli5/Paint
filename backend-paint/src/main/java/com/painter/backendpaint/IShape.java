@@ -5,6 +5,13 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import shapes.Circle;
+import shapes.Ellipse;
+import shapes.Line;
+import shapes.Rectangle;
+import shapes.Square;
+import shapes.Triangle;
+
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "class")
 @JsonSubTypes({
     @JsonSubTypes.Type(value=Circle.class, name= "Circle"),

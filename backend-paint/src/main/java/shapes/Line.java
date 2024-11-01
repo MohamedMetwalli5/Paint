@@ -1,15 +1,18 @@
-package com.painter.backendpaint;
+package shapes;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.painter.backendpaint.IShape;
+import com.painter.backendpaint.MultiplePointsShape;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Map;
+
 @SuppressWarnings({"unchecked","unused"})
 @JsonTypeName("Line")
 public class Line extends MultiplePointsShape {
-   Line(){
+   public Line(){
        setType("line");
    }
     public void draw(Map<?,?> map){

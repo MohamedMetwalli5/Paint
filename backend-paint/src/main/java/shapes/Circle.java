@@ -1,14 +1,17 @@
-package com.painter.backendpaint;
+package shapes;
 
 import java.util.ArrayList;
 import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.painter.backendpaint.IShape;
+import com.painter.backendpaint.OnePointShape;
+
+
 @SuppressWarnings("unchecked")
 @JsonTypeName("Circle")
 public class Circle extends OnePointShape {
     
-    Circle(){
+    public Circle(){
         setType("circle");
     }
     Number radius;
@@ -37,6 +40,5 @@ public class Circle extends OnePointShape {
         shape.setY(this.getY());
         return shape;
     }
-    
     
 }

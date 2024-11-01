@@ -11,8 +11,8 @@ public class DrawEngine {//Singleton Class
     private static DrawEngine instance;
     private ArrayList<IShape> shapes=new ArrayList<IShape>();
     IShape shape;
-    Stack undo=new Stack();
-    Stack redo=new Stack();
+    public Stack undo=new Stack();
+    public Stack redo=new Stack();
     private DrawEngine(){
     }
     public static synchronized DrawEngine getInstance(){

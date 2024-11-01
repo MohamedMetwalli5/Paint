@@ -1,13 +1,16 @@
-package com.painter.backendpaint;
+package shapes;
 
 import java.util.ArrayList;
 import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.painter.backendpaint.IShape;
+import com.painter.backendpaint.MultiplePointsShape;
+
+
 @SuppressWarnings({"unchecked"})
 @JsonTypeName("Triangle")
 public class Triangle extends MultiplePointsShape{
-    Triangle(){
+    public Triangle(){
         setType("triangle");
     }
     public void draw(Map<?,?> map){

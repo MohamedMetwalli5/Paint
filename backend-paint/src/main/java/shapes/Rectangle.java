@@ -1,14 +1,17 @@
-package com.painter.backendpaint;
+package shapes;
 
 import java.util.ArrayList;
 import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.painter.backendpaint.IShape;
+import com.painter.backendpaint.OnePointShape;
+
+
 @SuppressWarnings({"unchecked"})
 @JsonTypeName("Rectangle")
 public class Rectangle extends OnePointShape{
    
-    Rectangle(){
+    public Rectangle(){
         setType("rectangle");
     }
    Number width;
