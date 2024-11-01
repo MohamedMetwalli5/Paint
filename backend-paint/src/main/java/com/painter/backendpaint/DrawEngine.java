@@ -6,13 +6,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Stack;
 @SuppressWarnings({"unchecked","unused"})
 public class DrawEngine {//Singleton Class
     private static DrawEngine instance;
     private ArrayList<IShape> shapes=new ArrayList<IShape>();
     IShape shape;
-    public Stack undo=new Stack();
-    public Stack redo=new Stack();
+    public Stack undo = new Stack();
+    public Stack redo = new Stack();
     private DrawEngine(){
     }
     public static synchronized DrawEngine getInstance(){
