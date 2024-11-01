@@ -1,5 +1,3 @@
-// src/services/modeService.js
-
 export default {
     chooseDraw(context) {
       context.draw = true;
@@ -40,4 +38,5 @@ export default {
       context.dotted = false;
       context.resize = false;
     }
+    
   };
