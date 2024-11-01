@@ -1,6 +1,8 @@
 <template>
   <div id="app">
+    <!-- Shape Controls -->
     <shapes
+      id="shapes"
       @draw-shape="DrawShape"
       @selected="chooseSelect"
       @moved="chooseMove"
@@ -10,17 +12,20 @@
       @redo-shape="Redo"
       @Colored="Color"
       @resized="resizing"
-      id="shapes"
     />
+
+    <!-- Main Canvas -->
     <canvas
       id="canvas"
       height="1000px"
       width="1000px"
       @click="excuteChosen"
     ></canvas>
-    <DialogBox @dialog-input="DialogInput" id="dialog-box" />
-    <WHDialog @w-h-input="WHDialogInput" id="w-h-dialog" />
-    <EllipseDialog @ellipse-input="EllipseDialogInput" id="ellipse-dialog" />
+
+    <!-- Dialog Components -->
+    <DialogBox id="dialog-box" @dialog-input="DialogInput" />
+    <WHDialog id="w-h-dialog" @w-h-input="WHDialogInput" />
+    <EllipseDialog id="ellipse-dialog" @ellipse-input="EllipseDialogInput" />
     <SideFooter />
   </div>
 </template>
@@ -29,36 +34,19 @@
 import shapes from "../src/components/shapes";
 import DialogBox from "../src/components/Dialog";
 import WHDialog from "../src/components/WHDialog";
-import EllipseDialog from "../src//components//EllipseDialog";
+import EllipseDialog from "../src/components/EllipseDialog";
 import SideFooter from "../src/components/SideFooter.vue";
+import modeService from "./services/modeSelectionService";
+import shapeOperationsService from "../src/services/shapeOperationsService";
+import selectionAndMovementService from "../src/services/selectionAndMovementService";
+import shapeDrawingService from './services/shapeDrawingService';
+import dialogInputService from './services/dialogInputService';
 
 const axios = require("axios").default;
+
 export default {
   name: "App",
-  beforeCreate () {
-    document.querySelector('body').setAttribute('style', 'background:#FEEF92')
-  },
-  beforeDestroy () {
-    document.querySelector('body').setAttribute('style', '')
-  },
-  data() {
-    return {
-      shape: null,
-      wotkingShape: null,
-      shapes: [], //array of shapes
-      counter: 0,
-      draw: true,
-      select: false,
-      move: false,
-      copy: false,
-      delet: false,
-      dotted: false,
-      redraw: false,
-      resize:false,
-      color: "",
-      m: 0, //the index of the workingShape in the array of shapes
-    };
-  },
+
   components: {
     shapes,
     DialogBox,
@@ -66,12 +54,68 @@ export default {
     EllipseDialog,
     SideFooter,
   },
+
+  // Lifecycle Hooks
+  beforeCreate() {
+    document.querySelector('body').setAttribute('style', 'background:#FEEF92')
+  },
+  
+  beforeDestroy() {
+    document.querySelector('body').setAttribute('style', '')
+  },
+
+  data() {
+    return {
+      shape: null,
+      workingShape: null,
+      shapes: [], 
+      counter: 0,
+      m: 0, // Index of workingShape in shapes array
+
+      // State management
+      draw: true,
+      select: false,
+      move: false,
+      copy: false,
+      delet: false,
+      dotted: false,
+      redraw: false,
+      resize: false,
+      color: "",
+    };
+  },
+
   methods: {
-    Color(c) {
-      this.color = c;
-      this.coloring();
-      this.color = "";
+    // Mode Selection Methods
+    chooseDraw() {
+      modeService.chooseDraw(this);
     },
+
+    chooseSelect() {
+      modeService.chooseSelect(this);
+    },
+
+    chooseMove() {
+      modeService.chooseMove(this);
+    },
+
+    chooseCopy() {
+      modeService.chooseCopy(this);
+    },
+
+    // Core Drawing Methods
+    DrawShape(shape) {
+      this.draw = true;
+      this.select = false;
+      this.move = false;
+      this.copy = false;
+      this.delet = false;
+      this.dotted = false;
+      this.resize = false;
+      this.redrawCanvas();
+      this.shape = shape;
+    },
+
     excuteChosen(event) {
       if (this.draw === true) {
         this.Draw(event);
@@ -83,1152 +127,235 @@ export default {
         this.copying(event);
       }
     },
-    DrawShape(shape) {
-      //Determine the shape (circle,rectangle etc)
-      this.draw = true;
-      this.select = false;
-      this.move = false;
-      this.copy = false;
-      this.delet = false;
-      this.dotted = false;
-      this.resize=false;
-      this.redrawCanvas();
-      this.shape = shape;
-    },
-    GetCoors(event) {
-      /*getting the x and y coordinates of the mouse when mouse is clicked on the canvas*/
-      var canvas = document.getElementById("canvas");
-      var rect = event.target.getBoundingClientRect(); //Get the surrounding rectangle of the canvas including padding and border
-      var borderLeft = getComputedStyle(canvas, null).getPropertyValue(
-        "border-left-width"
-      ); //get the left border of the canvas
-      var padLeft = getComputedStyle(canvas, null).getPropertyValue(
-        "padding-left"
-      ); //get the left padding of the canvas
-      var borderTop = getComputedStyle(canvas, null).getPropertyValue(
-        "border-top-width"
-      ); //get the top border of the canvas
-      var padTop = getComputedStyle(canvas, null).getPropertyValue(
-        "padding-top"
-      ); //get the top padding of the canvas*/
-      if (this.draw === true) {
-        this.shape.x.push(
-          event.clientX -
-            parseFloat(borderLeft) -
-            parseFloat(padLeft) -
-            rect.left
-        ); //get the x coordinate of the mouse
-        this.shape.y.push(
-          event.clientY - parseFloat(borderTop) - parseFloat(padTop) - rect.top
-        ); //get the y coordinate of the mouse
-      } else if (this.move === true) {
-        this.wotkingShape.x[0] =
-          event.clientX -
-          parseFloat(borderLeft) -
-          parseFloat(padLeft) -
-          rect.left; //get the x coordinate of the mouse
-        this.wotkingShape.y[0] =
-          event.clientY - parseFloat(borderTop) - parseFloat(padTop) - rect.top; //get the y coordinate of the mouse
-      } else if (this.copy === true) {
-        this.shape.x[0] =
-          event.clientX -
-          parseFloat(borderLeft) -
-          parseFloat(padLeft) -
-          rect.left; //get the x coordinate of the mouse
-        this.shape.y[0] =
-          event.clientY - parseFloat(borderTop) - parseFloat(padTop) - rect.top; //get the y coordinate of the mouse
-      }
-    },
+
     Draw(event) {
       if (this.shape != null) {
-        if (this.shape.type === "circle") {
-          var dialog;
-          var whdialog;
-          var ellipsedialog;
-          this.GetCoors(event);
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "block"; //show the dialog box for the user to enter the radius
-          dialog.style.left = event.clientX + "px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          dialog.style.top = event.clientY + "px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "none";
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "none";
-        } else if (this.shape.type === "line") {
-          this.GetCoors(event);
-          this.Line();
-        } else if (this.shape.type === "rectangle") {
-          this.GetCoors(event);
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "block"; //Show the dialog box for the user to enter the width and height of the rectangle
-          whdialog.style.left = event.clientX + "px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          whdialog.style.top = event.clientY + "px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "none";
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "none";
-        } else if (this.shape.type === "square") {
-          this.GetCoors(event);
-          var dialog2 = document.getElementById("dialog-box");
-          dialog2.style.display = "block"; //show the dialog box for the user to enter the radius
-          dialog2.style.left = event.clientX + "px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          dialog2.style.top = event.clientY + "px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "none";
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "none";
-        } else if (this.shape.type === "triangle") {
-          this.GetCoors(event);
-          this.Triangle();
-        } else if (this.shape.type === "ellipse") {
-          this.GetCoors(event);
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "block";
-          ellipsedialog.style.left = event.clientX + "px";
-          ellipsedialog.style.top = event.clientY + "px";
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "none";
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "none";
+        const dialog = document.getElementById("dialog-box");
+        const whdialog = document.getElementById("w-h-dialog");
+        const ellipsedialog = document.getElementById("ellipse-dialog");
+
+        this.GetCoors(event);
+
+        switch(this.shape.type) {
+          case "circle":
+            dialog.style.display = "block";
+            dialog.style.left = event.clientX + "px";
+            dialog.style.top = event.clientY + "px";
+            whdialog.style.display = "none";
+            ellipsedialog.style.display = "none";
+            break;
+
+          case "line":
+            this.Line();
+            break;
+
+          case "rectangle":
+            whdialog.style.display = "block";
+            whdialog.style.left = event.clientX + "px";
+            whdialog.style.top = event.clientY + "px";
+            dialog.style.display = "none";
+            ellipsedialog.style.display = "none";
+            break;
+
+          case "square":
+            dialog.style.display = "block";
+            dialog.style.left = event.clientX + "px";
+            dialog.style.top = event.clientY + "px";
+            whdialog.style.display = "none";
+            ellipsedialog.style.display = "none";
+            break;
+
+          case "triangle":
+            this.Triangle();
+            break;
+
+          case "ellipse":
+            ellipsedialog.style.display = "block";
+            ellipsedialog.style.left = event.clientX + "px";
+            ellipsedialog.style.top = event.clientY + "px";
+            dialog.style.display = "none";
+            whdialog.style.display = "none";
+            break;
         }
       }
     },
+
+    // Shape Drawing Methods
     Circle() {
-      //Draw the circle
-      var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.arc(
-        this.shape.x[0],
-        this.shape.y[0],
-        this.shape.radius,
-        0,
-        Math.PI * 2
-      );
-      if (this.dotted == true) {
-        ctx.setLineDash([5, 5]);
-        this.dotted = false;
-      }
-      ctx.stroke();
-      ctx.fillStyle = this.shape.color;
-      ctx.fill();
-      ctx.setLineDash([]);
-      if (this.redraw != true&&this.resizing != true&& (this.draw === true || this.copy == true)) {
-        this.shape.id = this.counter;
-        this.counter++;
-        this.shapes.push(this.shape); //put the shape in the shapes array
-        this.redraw = false;
-        const t = this;
-        axios
-          .post("http://localhost:8081/draw", t.shape)
-          .then((response) => {
-            console.log(response.data);
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-      }
-      this.shape = null; //reset the shape pointer
+      shapeDrawingService.Circle(this);
     },
+
     Line() {
-      if (this.shape.x.length === 2) {
-        //if the user clicked on the canvas 2 times then we have 2 x coordinates and 2 y coordinates and we can then draw the line
-        //draw the line
-        var canvas = document.getElementById("canvas");
-        var ctx = canvas.getContext("2d");
-        ctx.beginPath();
-        ctx.moveTo(this.shape.x[0], this.shape.y[0]);
-        ctx.lineTo(this.shape.x[1], this.shape.y[1]);
-        if (this.dotted == true) {
-          ctx.setLineDash([5, 5]);
-          this.dotted = false;
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
-        if (this.redraw != true && (this.draw === true || this.copy == true)) {
-          this.shape.id = this.counter;
-          this.counter++;
-          this.shapes.push(this.shape); //Put the shape in the shapes array
-          this.redraw = false;
-          const t = this;
-          axios
-            .post("http://localhost:8081/draw", t.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        }
-        this.shape = null; //reset the shape pointer
-      }
+      shapeDrawingService.Line(this);
     },
+
     Rectangle() {
-      //draw the rectangle
-      var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.rect(
-        this.shape.x[0],
-        this.shape.y[0],
-        this.shape.width,
-        this.shape.height
-      );
-      if (this.dotted == true) {
-        ctx.setLineDash([5, 5]);
-        this.dotted = false;
-      }
-      ctx.stroke();
-      ctx.fillStyle = this.shape.color;
-      ctx.fill();
-      ctx.setLineDash([]);
-      if (this.redraw != true && (this.draw === true || this.copy == true)) {
-        this.shape.id = this.counter;
-        this.counter++;
-        this.shapes.push(this.shape); //put the shape into the shapes array
-        this.redraw = false;
-        const t = this;
-        axios
-          .post("http://localhost:8081/draw", t.shape)
-          .then((response) => {
-            console.log(response.data);
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-      }
-      this.shape = null; //reset the shape pointer
+      shapeDrawingService.Rectangle(this);
     },
+
     Square() {
-      //Draw the square
-      var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.rect(
-        this.shape.x[0],
-        this.shape.y[0],
-        this.shape.side,
-        this.shape.side
-      );
-      if (this.dotted == true) {
-        ctx.setLineDash([5, 5]);
-        this.dotted = false;
-      }
-      ctx.stroke();
-      ctx.fillStyle = this.shape.color;
-      ctx.fill();
-      ctx.setLineDash([]);
-      if (this.redraw != true && (this.draw === true || this.copy == true)) {
-        this.shape.id = this.counter;
-        this.counter++;
-        this.shapes.push(this.shape); //put the shape into the shapes array
-        this.redraw = false;
-        const t = this;
-        axios
-          .post("http://localhost:8081/draw", t.shape)
-          .then((response) => {
-            console.log(response.data);
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-      }
-      this.shape = null; //reset the shape pointer
+      shapeDrawingService.Square(this);
     },
+
     Triangle() {
-      //Draw the triangle
-      if (this.shape.x.length === 3) {
-        //if the user clicked on the canvas three times
-        var canvas = document.getElementById("canvas");
-        var ctx = canvas.getContext("2d");
-        ctx.beginPath();
-        ctx.moveTo(this.shape.x[0], this.shape.y[0]);
-        ctx.lineTo(this.shape.x[1], this.shape.y[1]);
-        ctx.lineTo(this.shape.x[2], this.shape.y[2]);
-        ctx.lineTo(this.shape.x[0], this.shape.y[0]);
-        if (this.dotted == true) {
-          ctx.setLineDash([5, 5]);
-          this.dotted = false;
-        }
-        ctx.stroke();
-        ctx.fillStyle = this.shape.color;
-        ctx.fill();
-        ctx.setLineDash([]);
-        if (this.redraw != true && (this.draw === true || this.copy == true)) {
-          this.shape.id = this.counter;
-          this.counter++;
-          this.shapes.push(this.shape); //put the shape in the shapes array
-          this.redraw = false;
-          const t = this;
-          axios
-            .post("http://localhost:8081/draw", t.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        }
-        this.shape = null; //reset the shape pointer
-      }
+      shapeDrawingService.Triangle(this);
     },
+
     Ellipse() {
-      var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
-      ctx.beginPath();
-      ctx.ellipse(
-        this.shape.x[0],
-        this.shape.y[0],
-        this.shape.radiusX,
-        this.shape.radiusY,
-        this.shape.rotationAngle,
-        0,
-        2 * Math.PI
-      );
-      if (this.dotted == true) {
-        ctx.setLineDash([5, 5]);
-        this.dotted = false;
-      }
-      ctx.stroke();
-      ctx.fillStyle = this.shape.color;
-      ctx.fill();
-      ctx.setLineDash([]);
-      if (this.redraw != true && (this.draw === true || this.copy == true)) {
-        this.shape.id = this.counter;
-        this.counter++;
-        this.shapes.push(this.shape); //put the shape in the shapes array
-        this.redraw = false;
-        const t = this;
-        axios
-          .post("http://localhost:8081/draw", t.shape)
-          .then((response) => {
-            console.log(response.data);
-          })
-          .catch((e) => {
-            console.log(e);
-          });
-      }
-      this.shape = null; //reset the shape pointer
+      shapeDrawingService.Ellipse(this);
     },
+
+    // Utility Methods
+    GetCoors(event) {
+      const canvas = document.getElementById("canvas");
+      const rect = event.target.getBoundingClientRect();
+      const borderLeft = getComputedStyle(canvas, null).getPropertyValue("border-left-width");
+      const padLeft = getComputedStyle(canvas, null).getPropertyValue("padding-left");
+      const borderTop = getComputedStyle(canvas, null).getPropertyValue("border-top-width");
+      const padTop = getComputedStyle(canvas, null).getPropertyValue("padding-top");
+
+      const x = event.clientX - parseFloat(borderLeft) - parseFloat(padLeft) - rect.left;
+      const y = event.clientY - parseFloat(borderTop) - parseFloat(padTop) - rect.top;
+
+      if (this.draw === true) {
+        this.shape.x.push(x);
+        this.shape.y.push(y);
+      } else if (this.move === true) {
+        this.workingShape.x[0] = x;
+        this.workingShape.y[0] = y;
+      } else if (this.copy === true) {
+        this.shape.x[0] = x;
+        this.shape.y[0] = y;
+      }
+    },
+
+
+    // Dialog input handlers
     DialogInput(input) {
-      if (this.shape.type === "circle") {
-        this.shape.radius = parseFloat(input) * 38;
-      } else if (this.shape.type === "square") {
-        this.shape.side = parseFloat(input) * 38;
-      }
-      var dialog = document.getElementById("dialog-box");
-      dialog.style.display = "none";
-      if(this.resize==true){
-        this.resizeCS();
-      }
-      else{
-        if (this.shape.type === "circle") {
-          this.Circle();
-        } else if (this.shape.type === "square") {
-          this.Square();
+      dialogInputService.DialogInput(this, input);
+    },
+
+    WHDialogInput(width, height) {
+      dialogInputService.WHDialogInput(this, width, height);
+    },
+
+    EllipseDialogInput(radiusX, radiusY, rotationAngle) {
+      dialogInputService.EllipseDialogInput(this, radiusX, radiusY, rotationAngle);
+    },
+
+    // Shape operations    
+    Color(c) {
+      shapeOperationsService.Color(this, c);
+    },
+
+    coloring() {
+      shapeOperationsService.coloring(this);
+    },
+
+    resizeCS() {
+      shapeOperationsService.resizeCS(this);
+    },
+
+    resizing() {
+      shapeOperationsService.resizing(this);
+    },
+
+    Undo() {
+      shapeOperationsService.Undo(this);
+    },
+
+    Redo() {
+      shapeOperationsService.Redo(this);
+    },
+
+    deleting() {
+      shapeOperationsService.deleting(this);
+    },
+
+
+    // Selection and movement operations
+    selecting(event) {
+      selectionAndMovementService.selecting(this, event);
+    },
+
+    moving(event) {
+      selectionAndMovementService.moving(this, event);
+    },
+
+    copying(event) {
+      selectionAndMovementService.copying(this, event);
+    },
+
+    // Canvas Operations
+    clearCanvas() {
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    },
+
+    redrawCanvas(j) {
+      this.clearCanvas();
+      for (let i = 0; i < this.shapes.length; i++) {
+        if (i !== j && this.shapes[i] && this.shapes[i].type !== "null") {
+          this.shape = this.shapes[i];
+          this.redraw = true;
+          
+          switch(this.shapes[i].type) {
+            case "circle":
+              this.Circle();
+              break;
+            case "line":
+              this.Line();
+              break;
+            case "rectangle":
+              this.Rectangle();
+              break;
+            case "square":
+              this.Square();
+              break;
+            case "triangle":
+              this.Triangle();
+              break;
+            case "ellipse":
+              this.Ellipse();
+              break;
+          }
+          
+          this.redraw = false;
         }
       }
     },
-    WHDialogInput(width, height) {
-      this.shape.width = parseFloat(width) * 38;
-      this.shape.height = parseFloat(height) * 38;
-      var whdialog = document.getElementById("w-h-dialog");
-      whdialog.style.display = "none";
-      if(this.resize==true){
-        this.resizeCS();
-      }
-      else{
-        this.Rectangle();
-      }
-    },
-    EllipseDialogInput(radiusX, radiusY, rotationAngle) {
-      this.shape.radiusX = radiusX * 38;
-      this.shape.radiusY = radiusY * 38;
-      this.shape.rotationAngle = (rotationAngle * Math.PI) / 180;
-      var ellipsedialog = document.getElementById("ellipse-dialog");
-      ellipsedialog.style.display = "none";
-      if(this.resize==true){
-        this.resizeCS();
-      }
-      else{
-        this.Ellipse();
-      }
-    },
-    chooseDraw() {
-      this.draw = true;
-      this.select = false;
-      this.move = false;
-      this.copy = false;
-      this.delet = false;
-      this.dotted = false;
-      this.resize=false;
-    },
-    chooseSelect() {
-      this.draw = false;
-      this.select = true;
-      this.move = false;
-      this.copy = false;
-      this.delet = false;
-      this.dotted = false;
-      this.resize=false;
-    },
-    chooseMove() {
-      this.draw = false;
-      this.select = false;
-      this.move = true;
-      this.copy = false;
-      this.delet = false;
-      this.dotted = false;
-      this.resize=false;
-    },
-    chooseCopy() {
-      this.draw = false;
-      this.select = false;
-      this.move = false;
-      this.copy = true;
-      this.delet = false;
-      this.dotted = false;
-      this.resize=false;
-    },
+
+
+    // Geometry Helper Methods
     sign(p1x, p1y, p2x, p2y, p3x, p3y) {
       return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
     },
+
     PointInTriangle(ptx, pty, v1x, v1y, v2x, v2y, v3x, v3y) {
-      var d1, d2, d3;
-      var has_neg, has_pos;
-      d1 = this.sign(ptx, pty, v1x, v1y, v2x, v2y);
-      d2 = this.sign(ptx, pty, v2x, v2y, v3x, v3y);
-      d3 = this.sign(ptx, pty, v3x, v3y, v1x, v1y);
-      has_neg = Boolean(d1 < 0 || d2 < 0 || d3 < 0);
-      has_pos = Boolean(d1 > 0 || d2 > 0 || d3 > 0);
-      return Boolean(!(has_neg && has_pos));
+      const d1 = this.sign(ptx, pty, v1x, v1y, v2x, v2y);
+      const d2 = this.sign(ptx, pty, v2x, v2y, v3x, v3y);
+      const d3 = this.sign(ptx, pty, v3x, v3y, v1x, v1y);
+      const has_neg = d1 < 0 || d2 < 0 || d3 < 0;
+      const has_pos = d1 > 0 || d2 > 0 || d3 > 0;
+      return !(has_neg && has_pos);
     },
+
     checkpoint(h, k, x, y, a, b, alpha) {
-      // checking the equation of ellipse with the given point
-      var p =
-        parseInt(
-          Math.pow((x - h) * Math.cos(alpha) + (y - k) * Math.sin(alpha), 2)
-        ) /
-          parseInt(Math.pow(a, 2)) +
-        parseInt(
-          Math.pow((x - h) * Math.sin(alpha) - (y - k) * Math.cos(alpha), 2)
-        ) /
-          parseInt(Math.pow(b, 2));
-      return p;
+      return (Math.pow((x - h) * Math.cos(alpha) + (y - k) * Math.sin(alpha), 2) / Math.pow(a, 2)) +
+             (Math.pow((x - h) * Math.sin(alpha) - (y - k) * Math.cos(alpha), 2) / Math.pow(b, 2));
     },
+
     checkPointOnLine(ptx, pty, v1x, v1y, v2x, v2y) {
-      var m = (v2y - v1y) / (v2x - v1x);
-      var angle = Math.atan(m);
-      var a = Math.sqrt(Math.pow(v1x - v2x, 2) + Math.pow(v1y - v2y, 2)) / 2;
-      var b = 20;
-      var h = (v1x + v2x) / 2;
-      var k = (v1y + v2y) / 2;
+      const m = (v2y - v1y) / (v2x - v1x);
+      const angle = Math.atan(m);
+      const a = Math.sqrt(Math.pow(v1x - v2x, 2) + Math.pow(v1y - v2y, 2)) / 2;
+      const b = 20;
+      const h = (v1x + v2x) / 2;
+      const k = (v1y + v2y) / 2;
       return this.checkpoint(h, k, ptx, pty, a, b, angle);
     },
-    selecting() {
-      var canvas = document.getElementById("canvas");
-      var rect = event.target.getBoundingClientRect(); //Get the surrounding rectangle of the canvas including padding and border
-      var borderLeft = getComputedStyle(canvas, null).getPropertyValue(
-        "border-left-width"
-      ); //get the left border of the canvas
-      var padLeft = getComputedStyle(canvas, null).getPropertyValue(
-        "padding-left"
-      ); //get the left padding of the canvas
-      var borderTop = getComputedStyle(canvas, null).getPropertyValue(
-        "border-top-width"
-      ); //get the top border of the canvas
-      var padTop = getComputedStyle(canvas, null).getPropertyValue(
-        "padding-top"
-      ); //get the top padding of the canvas
-      var x =
-        event.clientX -
-        parseFloat(borderLeft) -
-        parseFloat(padLeft) -
-        rect.left; //get the x coordinate of the mouse
-      var y =
-        event.clientY - parseFloat(borderTop) - parseFloat(padTop) - rect.top; //get the y coordinate of the mouse
-      var i;
-      for (i = this.shapes.length - 1; i >= 0; i--) {
-        if (this.shapes[i] != null && this.shapes[i] != undefined) {
-          this.chooseSelect();
-          if (this.shapes[i].type === "circle") {
-            if (
-              Math.sqrt(
-                Math.pow(x - this.shapes[i].x[0], 2) +
-                  Math.pow(y - this.shapes[i].y[0], 2)
-              ) <=
-              this.shapes[i].radius / 2
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Circle();
-              break;
-            }
-          } else if (this.shapes[i].type === "line") {
-            if (
-              this.checkPointOnLine(
-                x,
-                y,
-                this.shapes[i].x[0],
-                this.shapes[i].y[0],
-                this.shapes[i].x[1],
-                this.shapes[i].y[1]
-              ) <= 1
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Line();
-              break;
-            }
-          } else if (this.shapes[i].type === "square") {
-            if (
-              x >= this.shapes[i].x[0] &&
-              x <= this.shapes[i].x[0] + this.shapes[i].side &&
-              y >= this.shapes[i].y[0] &&
-              y <= this.shapes[i].y[0] + this.shapes[i].side
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Square();
-              break;
-            }
-          } else if (this.shapes[i].type === "rectangle") {
-            if (
-              x >= this.shapes[i].x[0] &&
-              x <= this.shapes[i].x[0] + this.shapes[i].width &&
-              y >= this.shapes[i].y[0] &&
-              y <= this.shapes[i].y[0] + this.shapes[i].height
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Rectangle();
-              break;
-            }
-          } else if (this.shapes[i].type === "triangle") {
-            if (
-              this.PointInTriangle(
-                x,
-                y,
-                this.shapes[i].x[0],
-                this.shapes[i].y[0],
-                this.shapes[i].x[1],
-                this.shapes[i].y[1],
-                this.shapes[i].x[2],
-                this.shapes[i].y[2]
-              )
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Triangle();
-              break;
-            }
-          } else if (this.shapes[i].type === "ellipse") {
-            if (
-              this.checkpoint(
-                this.shapes[i].x[0],
-                this.shapes[i].y[0],
-                x,
-                y,
-                this.shapes[i].radiusX / 2,
-                this.shapes[i].radiusY / 2,
-                this.shapes[i].rotationAngle
-              ) <= 1
-            ) {
-              this.clearCanvas();
-              this.m = i;
-              this.redrawCanvas(this.m);
-              this.shape = this.shapes[i];
-              this.wotkingShape = this.shapes[i];
-              this.dotted = true;
-              this.Ellipse();
-              break;
-            }
-          }
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-        }
-      }
-    },
-    coloring() {
-      if (this.wotkingShape != null && this.wotkingShape != undefined) {
-        this.chooseMove();
-        if (this.wotkingShape.type === "circle") {
-          this.wotkingShape.color = this.color;
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Circle();
-          this.chooseDraw(); //to return to the default position which is drawen (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "square") {
-          this.wotkingShape.color = this.color;
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Square();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "rectangle") {
-          this.wotkingShape.color = this.color;
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Rectangle();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "triangle") {
-          this.wotkingShape.color = this.color;
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Triangle();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "ellipse") {
-          this.wotkingShape.color = this.color;
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Ellipse();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        }
-      }
-    },
-    resizeCS:function(){
-      this.clearCanvas();
-      this.redrawCanvas(this.m);
-      this.shape = this.shapes[this.m];
-      axios
-        .post("http://localhost:8081/update", this.shape)
-        .then((response) => {
-          console.log(response.data);
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-      if(this.shape.type=="circle"){
-        this.Circle(); 
-      }
-      else if(this.shape.type=="square"){
-        this.Square(); 
-      }
-      else if(this.shape.type=="rectangle"){
-        this.Rectangle();
-      }
-      else if(this.shape.type=="ellipse"){
-        this.Ellipse();
-      }
-      this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-      this.wotkingShape = null;
-      this.resize=false;
-    },
-    resizing() {
-      if (this.wotkingShape != null && this.wotkingShape != undefined) {
-        var dialog;
-        var whdialog
-        var ellipsedialog
-        var canvas = document.getElementById("canvas");
-        var rect = canvas.getBoundingClientRect(); //Get the surrounding rectangle of the canvas including padding and border
-        
-        if (this.wotkingShape.type === "circle"||this.wotkingShape.type === "square") {
-          //this.GetCoors(event);
-          this.shape = this.wotkingShape;
-          this.resize=true;
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "block"; //show the dialog box for the user to enter the radius
-          dialog.style.left = rect.left+450+ "px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          dialog.style.top = rect.top +200 + "px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          console.log(rect.left);
-          console.log(rect.top);
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "none";
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "none";
-        }
-        else if (this.wotkingShape.type === "rectangle") {
-          //this.GetCoors(event);
-          this.shape = this.wotkingShape;
-          this.resize=true;
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "block"; //Show the dialog box for the user to enter the width and height of the rectangle
-          whdialog.style.left =rect.left+450+ "px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          whdialog.style.top = rect.top  + 200+"px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "none";
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "none";
-        }
-        else if (this.wotkingShape.type === "ellipse") {
-          //this.GetCoors(event);
-          this.shape = this.wotkingShape;
-          this.resize=true;
-          ellipsedialog = document.getElementById("ellipse-dialog");
-          ellipsedialog.style.display = "block";
-          ellipsedialog.style.left =rect.left+ 450+"px"; //make the top left x coordinate of the dialog box appear on the mouse x coordinate
-          ellipsedialog.style.top = rect.top + 200+ "px"; //make the top left y coordinate of the dialog box appear on the mouse y coordinate
-          dialog = document.getElementById("dialog-box");
-          dialog.style.display = "none";
-          whdialog = document.getElementById("w-h-dialog");
-          whdialog.style.display = "none";
-        }
-      }
-    },
-    moving() {
-      var x;
-      var y;
-      var xDiff;
-      var yDiff;
-      var i;
-      if (this.wotkingShape != null && this.wotkingShape != undefined) {
-        this.chooseMove();
-        if (this.wotkingShape.type === "circle") {
-          this.GetCoors(event);
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          this.shapes[this.m]=this.shape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Circle();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "line") {
-          x = parseFloat(this.wotkingShape.x[0]);
-          y = parseFloat(this.wotkingShape.y[0]);
-          this.GetCoors(event);
-          xDiff = this.wotkingShape.x[0] - x;
-          yDiff = this.wotkingShape.y[0] - y;
-          for (i = 1; i < this.wotkingShape.x.length; i++) {
-            this.wotkingShape.x[i] = this.wotkingShape.x[i] + xDiff;
-          }
-          for (i = 1; i < this.wotkingShape.y.length; i++) {
-            this.wotkingShape.y[i] = this.wotkingShape.y[i] + yDiff;
-          }
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Line();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "square") {
-          this.GetCoors(event);
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Square();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "rectangle") {
-          this.GetCoors(event);
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Rectangle();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "triangle") {
-          x = parseFloat(this.wotkingShape.x[0]);
-          y = parseFloat(this.wotkingShape.y[0]);
-          this.GetCoors(event);
-          xDiff = this.wotkingShape.x[0] - x;
-          yDiff = this.wotkingShape.y[0] - y;
-          for (i = 1; i < this.wotkingShape.x.length; i++) {
-            this.wotkingShape.x[i] = this.wotkingShape.x[i] + xDiff;
-          }
-          for (i = 1; i < this.wotkingShape.y.length; i++) {
-            this.wotkingShape.y[i] = this.wotkingShape.y[i] + yDiff;
-          }
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Triangle();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        } else if (this.wotkingShape.type === "ellipse") {
-          this.GetCoors(event);
-          this.clearCanvas();
-          this.redrawCanvas(this.m);
-          this.shape = this.wotkingShape;
-          axios
-            .post("http://localhost:8081/update", this.shape)
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-          this.Ellipse();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        }
-      }
-    },
-    copying(event) {
-      if (this.wotkingShape != null && this.wotkingShape != undefined) {
-        this.chooseCopy();
-        var i;
-        const t = this;
-        if (this.wotkingShape.type === "circle") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              this.shape.x = [t.shape.x];
-              this.shape.y = [t.shape.y];
-              this.GetCoors(event);
-              this.Circle();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        } else if (this.wotkingShape.type === "line") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              var x = parseFloat(this.shape.x[0]);
-              var y = parseFloat(this.shape.y[0]);
-              this.GetCoors(event);
-              var xDiff = this.shape.x[0] - x;
-              var yDiff = this.shape.y[0] - y;
-              for (i = 1; i < this.shape.x.length; i++) {
-                this.shape.x[i] = this.shape.x[i] + xDiff;
-              }
-              for (i = 1; i < this.shape.y.length; i++) {
-                this.shape.y[i] = this.shape.y[i] + yDiff;
-              }
-              this.Line();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        } else if (this.wotkingShape.type === "square") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              t.shape.x = [t.shape.x];
-              t.shape.y = [t.shape.y];
-              this.GetCoors(event);
-              this.Square();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        } else if (this.wotkingShape.type === "rectangle") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              t.shape.x = [t.shape.x];
-              t.shape.y = [t.shape.y];
-              this.GetCoors(event);
-              this.Rectangle();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        } else if (this.wotkingShape.type === "triangle") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              var x = parseFloat(this.shape.x[0]);
-              var y = parseFloat(this.shape.y[0]);
-              this.GetCoors(event);
-              var xDiff = this.shape.x[0] - x;
-              var yDiff = this.shape.y[0] - y;
-              for (i = 1; i < this.shape.x.length; i++) {
-                this.shape.x[i] = this.shape.x[i] + xDiff;
-              }
-              for (i = 1; i < this.shape.y.length; i++) {
-                this.shape.y[i] = this.shape.y[i] + yDiff;
-              }
-              this.Triangle();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        } else if (this.wotkingShape.type === "ellipse") {
-          axios
-            .get("http://localhost:8081/copy", {
-              params: {
-                id: this.m,
-              },
-            })
-            .then((response) => {
-              console.log(response);
-              this.shape = response.data;
-              t.shape.x = [t.shape.x];
-              t.shape.y = [t.shape.y];
-              this.GetCoors(event);
-              this.Ellipse();
-              this.clearCanvas();
-              this.redrawCanvas();
-              this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-              this.wotkingShape = null;
-            })
-            .catch((e) => {
-              console.log(e);
-            });
-        }
-      }
-    },
-    deleting() {
-      axios
-        .get("http://localhost:8081/remove", {
-          params: {
-            id: this.m,
-          },
-        })
-        .then((response) => {
-          console.log(response);
-          this.shapes[this.m] = response.data;
-          this.clearCanvas();
-          this.redrawCanvas();
-          this.chooseDraw(); //to return to the default position which is drawind (may be modified then)
-          this.wotkingShape = null;
-        })
-        .catch((e) => {
-          console.log(e);
-        });
-    },
-    Undo() {
-      const t = this;
-      axios
-        .get("http://localhost:8081/undo")
-        .then((response) => {
-          t.shape = response.data;
-          if (t.shape != null && t.shape != "") {
-            if (this.shape.type != "line" && this.shape.type != "triangle") {
-              t.shape.x = [t.shape.x];
-              t.shape.y = [t.shape.y];
-            }
-            t.shapes[t.shape.id] = t.shape;
-          }
-          t.clearCanvas();
-          t.redrawCanvas();
-        })
-        .catch((e) => {
-          console.log("This is the undo error");
-          console.log(e);
-        });
-    },
-    Redo() {
-      const t = this;
-      axios
-        .get("http://localhost:8081/redo")
-        .then((response) => {
-          t.shape = response.data;
-          console.log(response.data);
-          if (t.shape.type != null) {
-            if (this.shape.type != "line" && this.shape.type != "triangle") {
-              t.shape.x = [t.shape.x];
-              t.shape.y = [t.shape.y];
-            }
-            t.shapes[t.shape.id] = t.shape;
-          }
-          t.clearCanvas();
-          t.redrawCanvas();
-        })
-        .catch((e) => {
-          console.log("This is the redo error");
-          console.log(e);
-        });
-    },
-    clearCanvas() {
-      var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    },
-    
-    redrawCanvas(j) {
-      this.clearCanvas();
-      var i;
-      for (i = 0; i < this.shapes.length; i++) {
-        if (i != j) {
-          if (this.shapes[i] != null && this.shapes[i] != undefined) {
-            if (this.shapes[i].type != "null") {
-              if (this.shapes[i].type === "circle") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Circle();
-                this.redraw = false;
-              } else if (this.shapes[i].type === "line") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Line();
-                this.redraw = false;
-              } else if (this.shapes[i].type === "rectangle") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Rectangle();
-                this.redraw = false;
-              } else if (this.shapes[i].type === "square") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Square();
-                this.redraw = false;
-              } else if (this.shapes[i].type === "triangle") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Triangle();
-                this.redraw = false;
-              } else if (this.shapes[i].type === "ellipse") {
-                this.shape = this.shapes[i];
-                this.redraw = true;
-                this.Ellipse();
-                this.redraw = false;
-              }
-            }
-          }
-        }
-      }
-    },
-  },
+  }
 };
 </script>
 
@@ -1242,18 +369,21 @@ export default {
   display: flex;
   flex-direction: row;
 }
+
 #canvas {
   border: 1px solid black;
   margin: auto;
   margin-left: 20px;
   border-radius: 15px;
 }
+
 #shapes {
   border: 1px solid black;
   display: flex;
   left: 0px;
   flex-direction: column;
 }
+
 .display {
   color: #a3a3a3;
   border-bottom: 1px solid #e1e1e1;
