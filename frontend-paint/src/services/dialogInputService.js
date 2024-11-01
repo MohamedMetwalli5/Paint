@@ -32,9 +32,7 @@ export default {
       context.shape.radiusX = radiusX * 38;
       context.shape.radiusY = radiusY * 38;
       context.shape.rotationAngle = (rotationAngle * Math.PI) / 180;
-      
       document.getElementById("ellipse-dialog").style.display = "none";
-      
       if (context.resize) {
         context.resizeCS();
       } else {
